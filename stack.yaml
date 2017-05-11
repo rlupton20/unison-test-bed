@@ -44,6 +44,6 @@ docker:
 image:
   container:
     name: clustertest-node
-    image: fpco/stack-run
+    base: fpco/stack-run
 
   
