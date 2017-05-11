@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 module Main where
 
 import System.Environment (getArgs)
@@ -6,6 +7,8 @@ import Control.Distributed.Process.Node (initRemoteTable)
 import Control.Distributed.Process.Backend.SimpleLocalnet
 
 import System.IO (hPutStrLn, stderr)
+
+import Control.Monad.Free
 
 master :: Backend -> [NodeId] -> Process ()
 master backend slaves = do
@@ -29,3 +32,11 @@ main = do
       startSlave backend
 
 
+-- Algebra of remote operations
+data RemoteAlg a = Transfer a deriving (Show)
+
+-- Functor instance
+instance Functor RemoteAlg where
+  fmap f (Transfer x) = Transfer (f x)
+
+type Remote = Free RemoteAlg
