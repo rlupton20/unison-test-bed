@@ -1,0 +1,15 @@
+# Describing the elements of the cluster
+
+version: '2'
+
+services:
+
+  node:
+    image: clustertest-node
+    command: "sh -c \"hostname -i | xargs -I {} clustertest-exe slave {} 5000 \""
+
+  master-node:
+    image: clustertest-node
+    command: "sh -c \"hostname -i | xargs -I {} clustertest-exe master {} 5000 \""
+    depends_on:
+      - node
