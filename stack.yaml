@@ -40,3 +40,10 @@ extra-package-dbs: []
 
 docker:
   enable: false
+
+image:
+  container:
+    name: clustertest-node
+    image: fpco/stack-run
+
+  
