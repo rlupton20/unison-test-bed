@@ -1,7 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 module Main where
 
 import System.Environment (getArgs)
@@ -12,22 +8,15 @@ import Control.Distributed.Process.Backend.SimpleLocalnet
 
 import System.IO (hPutStrLn, stderr)
 import Control.Monad (forever)
-import Data.Binary
-import Data.Typeable
-import GHC.Generics
 
 import Control.Monad.Free
-
-data Msg = Msg String deriving (Eq, Show, Generic, Typeable)
-
-instance Binary Msg
 
 
 master :: Backend -> [NodeId] -> Process ()
 master backend slaves = do
   -- log list of slaves to stderr
-  liftIO . hPutStrLn stderr  $ "MASTER :: Found slaves: " ++ show slaves
-  liftIO . hPutStrLn stderr $ "MASTER :: Total slaves : " ++ (show $ length slaves)
+  say $ "MASTER :: Found slaves: " ++ show slaves
+  say $ "MASTER :: Total slaves : " ++ (show $ length slaves)
   -- Run our remote computation
   run test
   -- Terminate all the slaves
