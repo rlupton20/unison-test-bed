@@ -16,6 +16,7 @@ import Data.Binary
 import Data.Typeable
 import GHC.Generics
 
+import Control.Monad.Free
 
 data Msg = Msg String deriving (Eq, Show, Generic, Typeable)
 
@@ -28,7 +29,7 @@ listenAndPrint _ = forever $ do
   where
     processMessage :: Msg -> Process ()
     processMessage (Msg msg) = do
-    liftIO $ putStrLn msg
+      liftIO $ putStrLn msg
 
 
 -- Update remote table to make listenAndPrint spawnable
@@ -59,3 +60,16 @@ main = do
     ["slave", host, port] -> do
       backend <- initializeBackend host port newRemoteTable
       startSlave backend
+
+data RemoteAlg a = Transfer NodeId a deriving (Eq, Show)
+
+instance Functor RemoteAlg where
+  fmap f (Transfer nid x) = Transfer nid (f x)
+
+type Remote = Free RemoteAlg
+
+data Ret a = Value a | Gone deriving (Eq, Show)
+
+run :: Remote a -> Process (Ret a)
+run (Pure x) = pure (Value x)
+run (Free (Transfer _ rest)) = spawnLocal (run rest >> return ()) >> pure Gone
