@@ -23,30 +23,12 @@ data Msg = Msg String deriving (Eq, Show, Generic, Typeable)
 instance Binary Msg
 
 
-listenAndPrint :: () -> Process ()
-listenAndPrint _ = forever $ do
-  receiveWait [match processMessage]
-  where
-    processMessage :: Msg -> Process ()
-    processMessage (Msg msg) = do
-      liftIO $ putStrLn msg
-
-
--- Update remote table to make listenAndPrint spawnable
-remotable ['listenAndPrint]
-newRemoteTable :: RemoteTable
-newRemoteTable = Main.__remoteTable initRemoteTable
-
-
 master :: Backend -> [NodeId] -> Process ()
 master backend slaves = do
   -- log list of slaves to stderr
   liftIO . hPutStrLn stderr  $ "MASTER :: Found slaves: " ++ show slaves
   liftIO . hPutStrLn stderr $ "MASTER :: Total slaves : " ++ (show $ length slaves)
---  pids <- sequence $ map (flip spawn $ $(mkClosure 'listenAndPrint) ()) slaves
-  -- sequence $ map (flip send (Msg "hello")) pids
-  -- Test spawn
-  say "Spawning local"
+  -- Run our remote computation
   run test
   -- Terminate all the slaves
   terminateAllSlaves backend
@@ -58,10 +40,10 @@ main = do
 
   case args of
     ["master", host, port] -> do
-      backend <- initializeBackend host port newRemoteTable
+      backend <- initializeBackend host port initRemoteTable
       startMaster backend (master backend)
     ["slave", host, port] -> do
-      backend <- initializeBackend host port newRemoteTable
+      backend <- initializeBackend host port initRemoteTable
       startSlave backend
 
 
