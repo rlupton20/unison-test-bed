@@ -1,7 +1,8 @@
--- things needed to typecheck the Remote API definition
+module UnisonRemote where
+
+import Control.Applicative
+
 data Remote a = MkRemote a
-(>>=) :: Remote a -> (a -> Remote b) -> Remote b
-(>>=) = undefined
 
 type Task = ()
 type Name a = ()
@@ -35,7 +36,9 @@ f <| x = f x
 --  - '∀ a' removed
 --  - invalid characters removed (CPU%, spawn-sandboxed -> spawn_sandboxed etc)
 --  - commented out keywords node/ephemeral/durable/foreign
---  - reordering to put data declarations before their uses
+--  - change Remote.pure to remote_pure etc
+--  - hacked out the last argument in the definition of Sandbox
+--  - Duration takes an Integer not a Number
 
 -- this is TBD
 data Cause = Error Text Node | Completed | Cancelled | Unresponsive Node
@@ -84,7 +87,7 @@ task_supervise :: Task -> Remote (Remote Cause)
 task_supervise = undefined
 
 -- Create a duration from a number of seconds
-duration_seconds :: Number -> Duration
+duration_seconds :: Integer -> Duration
 duration_seconds = undefined
 
 -- Like `remote_spawn`, but create the node inside a fresh sandbox
@@ -197,3 +200,14 @@ durable_peers = undefined
 -- Ask the current node if it has a binding for a `Foreign a`
 foreign_ask :: Foreign a -> Remote (Optional a)
 foreign_ask = undefined
+
+instance Functor Remote where
+  fmap f (MkRemote x) = MkRemote (f x)
+
+instance Applicative Remote where
+  (MkRemote f) <*> (MkRemote x) = MkRemote (f x)
+  pure x = MkRemote x
+
+instance Monad Remote where
+  MkRemote x >>= f = f x
+  return x = MkRemote x
