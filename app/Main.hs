@@ -22,15 +22,16 @@ data Msg = Msg String deriving (Eq, Show, Generic, Typeable)
 instance Binary Msg
 
 
-processMessage :: Msg -> Process ()
-processMessage (Msg msg) = do
-  liftIO $ putStrLn msg
-
-
 listenAndPrint :: () -> Process ()
 listenAndPrint _ = forever $ do
   receiveWait [match processMessage]
+  where
+    processMessage :: Msg -> Process ()
+    processMessage (Msg msg) = do
+    liftIO $ putStrLn msg
 
+
+-- Update remote table to make listenAndPrint spawnable
 remotable ['listenAndPrint]
 newRemoteTable :: RemoteTable
 newRemoteTable = Main.__remoteTable initRemoteTable
