@@ -69,7 +69,7 @@ run (Free (MyId f)) = do
   run (f $ show pid)
 run (Free (RemotePrint s rest)) = do
   pid <- getSelfPid
-  say ("\n[" ++ show pid ++ "] " ++ s) >> run rest
+  say s >> run rest
 
 transfer :: Node -> Remote ()
 transfer _ = liftF $ Transfer undefined ()
