@@ -1,20 +1,48 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Main where
 
 import System.Environment (getArgs)
 import Control.Distributed.Process
-import Control.Distributed.Process.Node (initRemoteTable)
+import Control.Distributed.Process.Node
+import Control.Distributed.Process.Closure
 import Control.Distributed.Process.Backend.SimpleLocalnet
 
 import System.IO (hPutStrLn, stderr)
+import Control.Monad (forever)
+import Data.Binary
+import Data.Typeable
+import GHC.Generics
 
-import Control.Monad.Free
+
+data Msg = Msg String deriving (Eq, Show, Generic, Typeable)
+
+instance Binary Msg
+
+
+processMessage :: Msg -> Process ()
+processMessage (Msg msg) = do
+  liftIO $ putStrLn msg
+
+
+listenAndPrint :: () -> Process ()
+listenAndPrint _ = forever $ do
+  receiveWait [match processMessage]
+
+remotable ['listenAndPrint]
+newRemoteTable :: RemoteTable
+newRemoteTable = Main.__remoteTable initRemoteTable
+
 
 master :: Backend -> [NodeId] -> Process ()
 master backend slaves = do
   -- log list of slaves to stderr
   liftIO . hPutStrLn stderr  $ "MASTER :: Found slaves: " ++ show slaves
   liftIO . hPutStrLn stderr $ "MASTER :: Total slaves : " ++ (show $ length slaves)
+  pids <- sequence $ map (flip spawn $ $(mkClosure 'listenAndPrint) ()) slaves
+  sequence $ map (flip send (Msg "hello")) pids
   -- Terminate all the slaves
   terminateAllSlaves backend
 
@@ -25,18 +53,8 @@ main = do
 
   case args of
     ["master", host, port] -> do
-      backend <- initializeBackend host port initRemoteTable
+      backend <- initializeBackend host port newRemoteTable
       startMaster backend (master backend)
     ["slave", host, port] -> do
-      backend <- initializeBackend host port initRemoteTable
+      backend <- initializeBackend host port newRemoteTable
       startSlave backend
-
-
--- Algebra of remote operations
-data RemoteAlg a = Transfer a deriving (Show)
-
--- Functor instance
-instance Functor RemoteAlg where
-  fmap f (Transfer x) = Transfer (f x)
-
-type Remote = Free RemoteAlg

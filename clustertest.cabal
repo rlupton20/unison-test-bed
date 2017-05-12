@@ -28,6 +28,7 @@ executable clustertest-exe
                      , distributed-process
                      , distributed-process-simplelocalnet
                      , free
+                     , binary
   default-language:    Haskell2010
 
 test-suite clustertest-test
