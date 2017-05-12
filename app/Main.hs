@@ -48,14 +48,18 @@ main = do
 
 
 type Node = NodeId
+data Task = Task ProcessId
+
 data RemoteAlg a = Transfer NodeId a
                  | MyId (String -> a)
+                 | Fork (Remote ()) (Task -> a)
                  | RemotePrint String a
 
 instance Functor RemoteAlg where
   fmap f (Transfer nid x) = Transfer nid (f x)
-  fmap f (RemotePrint s x) = RemotePrint s (f x)
   fmap f (MyId g) = MyId (f . g)
+  fmap f (Fork r g) = Fork r (f . g)
+  fmap f (RemotePrint s x) = RemotePrint s (f x)
 
 type Remote = Free RemoteAlg
 
@@ -67,6 +71,9 @@ run (Free (Transfer _ rest)) = spawnLocal (run rest >> return ()) >> pure Gone
 run (Free (MyId f)) = do
   pid <- getSelfPid
   run (f $ show pid)
+run (Free (Fork r rest)) = do
+  pid <- spawnLocal $ run r >> return ()
+  run ( rest $ Task pid )
 run (Free (RemotePrint s rest)) = do
   pid <- getSelfPid
   say s >> run rest
@@ -80,11 +87,19 @@ display s = liftF $ RemotePrint s ()
 locid :: Remote String
 locid = liftF $ MyId id
 
+fork :: Remote () -> Remote Task
+fork r = liftF $ Fork r id
+
+forkedTask :: Remote ()
+forkedTask = do
+  display "Hi there, I'm a forked task"
+
 test :: Remote ()
 test = do
   pid <- locid
   transfer undefined
+  fork forkedTask
   display pid
   pid <- locid
   display pid
-  return ()
+
